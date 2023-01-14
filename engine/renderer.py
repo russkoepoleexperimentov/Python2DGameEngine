@@ -5,8 +5,6 @@ from .batch import Batch
 from .camera import Camera
 from .vector2 import Vector2
 
-from pyrr.matrix44 import create_orthogonal_projection as ortho
-
 SHADER_NAME = 'resources/programs/default'
 
 
@@ -45,22 +43,41 @@ class Renderer:
         if batch.full:
             batch_id += 1
             batch = self.add_batch()
-        return batch_id, batch.add_quad()
+        return batch, batch.add_quad()
 
     def add_batch(self):
-        batch = Batch(self._ctx, self._program)
+        batch = Batch(self._application, self._ctx, self._program)
         self._batches.append(batch)
         return batch
 
-    def update_data(self, batch_id: int, quad_handle: int, position: Vector2, size: Vector2):
-        batch = self._batches[batch_id]
+    def update_data(self, object_):
+        texture_path = object_.texture
+        size = object_.size if object_.active else Vector2()
+        position = object_.position if object_.active else Vector2()
+        batch = object_.batch
+        quad_handle = object_.quad_handle
+
+        if not batch.contains_texture(texture_path) and batch.full:
+            print('!! Batch\'s textures overflow. Creating a new one...')
+            batch.remove_quad(quad_handle)
+            self.add_batch()
+            batch, quad_handle = self.add_quad()
+            object_.batch = batch
+            object_.quad_handle = quad_handle
+
+        texture_id = batch.add_texture(texture_path) if texture_path else 0
+
         data = np.array([
-            -size.x / 2 + position.x, -size.y / 2 + position.y,
-            +size.x / 2 + position.x, -size.y / 2 + position.y,
-            -size.x / 2 + position.x, +size.y / 2 + position.y,
-            +size.x / 2 + position.x, +size.y / 2 + position.y,
+            -size.x / 2 + position.x, -size.y / 2 + position.y, 0, 0, texture_id,
+            +size.x / 2 + position.x, -size.y / 2 + position.y, 1, 0, texture_id,
+            -size.x / 2 + position.x, +size.y / 2 + position.y, 0, 1, texture_id,
+            +size.x / 2 + position.x, +size.y / 2 + position.y, 1, 1, texture_id
         ], dtype='f4')
         batch.update_data(quad_handle, data)
+
+    def destroy(self):
+        for batch in self._batches:
+            batch.destroy()
 
     def _create_program(self):
         with open(SHADER_NAME + '.vert') as f:

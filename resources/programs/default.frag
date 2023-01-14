@@ -1,7 +1,19 @@
 #version 330
-in vec3 v_color;
+
+#define NR_TEXTURES 32
+
+in float v_tex;
+in vec2 v_uv;
+
+struct TexProfile {
+    sampler2D s;
+};
+
+uniform TexProfile textures[NR_TEXTURES];
+
 out vec4 f_color;
+
 void main() {
-    // We're not interested in changing the alpha value
-    f_color = vec4(v_color, 1.0);
+    int index = int(v_tex);
+    f_color = texture(textures[index].s, v_uv);
 }

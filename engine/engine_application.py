@@ -4,6 +4,7 @@ import moderngl as mgl
 import pygame as pg
 
 from .renderer import Renderer
+from .resources import Resources
 from .vector2 import Vector2
 from .world import World
 
@@ -23,6 +24,7 @@ class EngineApplication:
 
         self._clock = pg.time.Clock()
 
+        self._resources = Resources()
         self._renderer = Renderer(self, self._ctx)
         self._world = World(self, self._renderer)
 
@@ -30,12 +32,13 @@ class EngineApplication:
 
         self._objs = [
             self._world.create_game_object(),
-            self._world.create_game_object(),
-            self._world.create_game_object(),
-            self._world.create_game_object(),
-            self._world.create_game_object(),
-            self._world.create_game_object(),
         ]
+
+        for x in self._objs:
+            x.texture = 'resources/sprites/1.jpg'
+
+        self._objs[0].texture = 'resources/sprites/2.jpg'
+
 
         self._obj_ind = 0
 
@@ -47,10 +50,20 @@ class EngineApplication:
     def renderer(self):
         return self._renderer
 
+    @property
+    def resources(self):
+        return self._resources
+
     def catch_events(self):
         for event in pg.event.get():
             if event.type == pg.QUIT or event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 self.quit()
+
+            if event.type == pg.KEYDOWN and event.key == pg.K_1:
+                self._objs[0].texture = 'resources/sprites/1.jpg'
+
+            if event.type == pg.KEYDOWN and event.key == pg.K_2:
+                self._objs[0].texture = 'resources/sprites/2.jpg'
 
             if event.type == pg.KEYDOWN and event.key == pg.K_f:
                 self._obj_ind += 1
@@ -87,15 +100,23 @@ class EngineApplication:
 
     def mainloop(self, fps=60):
         while True:
-            self._clock.tick(fps)
-            self.catch_events()
+            try:
+                self._clock.tick(fps)
+                self.catch_events()
 
-            # update
+                # update
 
-            # draw
-            self._renderer.draw()
+                # draw
+                self._renderer.draw()
+            except KeyboardInterrupt:
+                self.quit()
+
+    def destroy(self):
+        self._renderer.destroy()
+        self._ctx.release()
 
     def quit(self):
+        self.destroy()
         pg.quit()
         sys.exit(0)
 
