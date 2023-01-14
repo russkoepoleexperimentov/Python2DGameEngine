@@ -1,28 +1,23 @@
 import moderngl as mgl
 import numpy as np
-import pyrr
 
 BATCH_QUADS = 8  # max amount of quads per batch
 BATCH_VERTEX_RESERVE = BATCH_QUADS * 4 * 2  # vertices count: 4 vertices per quad, 2 nums per vertex
 BATCH_INDEX_RESERVE = BATCH_QUADS * 2 * 3  # indices count: 2 tris per quad, 3 nums per triangle
 
+FLOAT_SIZE = np.dtype(np.float32).itemsize
+INT_SIZE = np.dtype(np.int32).itemsize
+
 
 class Batch:
-    def __init__(self, ctx):
+    def __init__(self, ctx, program):
         self._ctx: mgl.Context = ctx
 
-        self.prog = self.create_program()
-
-        self._matrix = self.prog['projection']
-        # TODO: Camera class + refactoring
-        self._matrix.write(pyrr.matrix44.create_orthogonal_projection(-20, 20, -15, 15, -1, 1,
-                                                                      dtype='f4'))
-
-        self._vbo = self._ctx.buffer(reserve=BATCH_VERTEX_RESERVE * np.dtype(np.float32).itemsize,
+        self._vbo = self._ctx.buffer(reserve=BATCH_VERTEX_RESERVE * FLOAT_SIZE,
                                      dynamic=True)
-        self._ibo = self._ctx.buffer(reserve=BATCH_INDEX_RESERVE * np.dtype(np.float32).itemsize,
+        self._ibo = self._ctx.buffer(reserve=BATCH_INDEX_RESERVE * INT_SIZE,
                                      dynamic=True)
-        self._vao = self._ctx.vertex_array(self.prog,
+        self._vao = self._ctx.vertex_array(program,
                                            [
                                             (self._vbo, '2f', 'in_vert')
                                             ],
@@ -84,32 +79,7 @@ class Batch:
         return handle
 
     def update_data(self, handle, vertex_data):
-        self._vbo.write(vertex_data, offset=handle * np.dtype(np.float32).itemsize)
+        self._vbo.write(vertex_data, offset=handle * FLOAT_SIZE)
 
     def draw(self):
         self._vao.render()
-
-    def create_program(self):
-        return self._ctx.program(
-            vertex_shader='''
-                #version 330
-                in vec2 in_vert;
-                
-                uniform mat4 projection;
-                
-                out vec3 v_color;    // Goes to the fragment shader
-                void main() {
-                    v_color = vec3(1.0);
-                    gl_Position = projection * vec4(in_vert, 0, 1.0);
-                }
-            ''',
-            fragment_shader='''
-                #version 330
-                in vec3 v_color;
-                out vec4 f_color;
-                void main() {
-                    // We're not interested in changing the alpha value
-                    f_color = vec4(v_color, 1.0);
-                }
-            '''
-        )

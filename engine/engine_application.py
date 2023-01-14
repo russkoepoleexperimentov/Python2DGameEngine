@@ -82,6 +82,9 @@ class EngineApplication:
             if event.type == pg.KEYDOWN and event.key == pg.K_DOWN:
                 o.position = o.position - Vector2(0, 1)
 
+            if event.type == pg.MOUSEMOTION and pg.mouse.get_pressed()[0]:
+                self._renderer.camera.position += Vector2(*event.rel) * 0.1
+
     def mainloop(self, fps=60):
         while True:
             self._clock.tick(fps)
